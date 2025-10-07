@@ -33,7 +33,7 @@ def new_equation():
     result = x * y
 
     # create task
-    ekv = f"{x} * {y}"
+    ekv = f"{x} x {y}"
 
     page["#ekvation"][0].textContent = ekv
 
