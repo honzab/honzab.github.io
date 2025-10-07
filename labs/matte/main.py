@@ -16,7 +16,7 @@ def fail():
 def verify(e):
     try:
         if int(result) == int(input_content.value):
-            add_task(None)
+            new_equation()
             success()
         else:
             fail()
@@ -24,8 +24,7 @@ def verify(e):
         pass
 
 
-@when("click", "#verify-btn")
-def add_task(e):
+def new_equation():
     global result
     input_content.value = ""
 
@@ -39,10 +38,15 @@ def add_task(e):
     page["#ekvation"][0].textContent = ekv
 
 
+@when("click", "#verify-btn")
+def add_task(e):
+    verify(e)
+
+
 def add_task_event(e):
     if e.key == "Enter":
         verify(e)
 
 
 input_content.onkeypress = add_task_event
-add_task(None)
+new_equation()
