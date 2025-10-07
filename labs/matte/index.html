@@ -1,0 +1,50 @@
+<!doctype html>
+
+<html>
+    <head>
+        <!-- Recommended meta tags -->
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+        <!-- PyScript CSS -->
+        <link rel="stylesheet" href="https://pyscript.net/releases/2025.8.1/core.css">
+
+        <!-- This script tag bootstraps PyScript -->
+        <script type="module" src="https://pyscript.net/releases/2025.8.1/core.js"></script>
+
+        <title>Matte är roligt!</title>
+
+        <style>
+            body {
+                font-family: Monaco;
+                font-size: 1.2em;
+            }
+        </style>
+    </head>
+
+    <body>
+        <section class="pyscript">
+            <main>
+                <section>
+                    <div>
+                        <h1>Matte är roligt!</h1>
+                    </div>
+
+                    <div>
+                        <span id="ekvation"></span> = <input id="input-content" type="number" pattern="[0-9]*" size=3 />
+                        <button id="verify-btn" type="submit">Skicka</button>
+                    </div>
+                    <div>
+                        <span id="result"></span>
+                    </div>
+                </section>
+            </main>
+
+            <script type="mpy" src="./main.py" config="./pyscript.toml"></script>
+        </section>
+    </body>
+    <script type="text/javascript">
+        document.getElementById("input-content").focus();
+    </script>
+</html>
+
