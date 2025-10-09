@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplication Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .equation {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        input {
+            font-size: 2rem;
+            padding: 15px 20px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            width: 100%;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 150px;
+            height: 150px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s ease;
+        }
+
+        .feedback.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .checkmark,
+        .crossmark {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+        }
+
+        .checkmark {
+            background: #4caf50;
+            color: white;
+        }
+
+        .crossmark {
+            background: #f44336;
+            color: white;
+        }
+
+        .score {
+            font-size: 1.2rem;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            .equation {
+                font-size: 2.5rem;
+                min-height: 60px;
+            }
+
+            input {
+                font-size: 1.8rem;
+                padding: 12px 15px;
+            }
+
+            .feedback {
+                width: 120px;
+                height: 120px;
+            }
+
+            .checkmark,
+            .crossmark {
+                font-size: 4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="equation" id="equation"></div>
+        <div class="input-container">
+            <input
+                type="number"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                id="answer"
+                placeholder="?"
+                autocomplete="off"
+            >
+        </div>
+        <div class="score">
+            <span id="correct">0</span> correct | <span id="incorrect">0</span> incorrect
+        </div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <script>
+        let num1, num2, correctAnswer;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let checkTimeout = null;
+
+        const equationEl = document.getElementById('equation');
+        const answerInput = document.getElementById('answer');
+        const feedbackEl = document.getElementById('feedback');
+        const correctEl = document.getElementById('correct');
+        const incorrectEl = document.getElementById('incorrect');
+
+        function generateEquation() {
+            num1 = Math.floor(Math.random() * 9) + 1;
+            num2 = Math.floor(Math.random() * 9) + 1;
+            correctAnswer = num1 * num2;
+            equationEl.textContent = `${num1} × ${num2} = ?`;
+            answerInput.value = '';
+            answerInput.focus();
+        }
+
+        function showFeedback(isCorrect) {
+            feedbackEl.innerHTML = isCorrect
+                ? '<div class="checkmark">✓</div>'
+                : '<div class="crossmark">✗</div>';
+
+            feedbackEl.classList.add('show');
+
+            setTimeout(() => {
+                feedbackEl.classList.remove('show');
+                if (isCorrect) {
+                    setTimeout(generateEquation, 200);
+                } else {
+                    answerInput.value = '';
+                    answerInput.focus();
+                }
+            }, 800);
+        }
+
+        function evaluateAnswer() {
+            const userAnswer = parseInt(answerInput.value, 10);
+
+            if (isNaN(userAnswer)) return;
+
+            if (userAnswer === correctAnswer) {
+                correctCount++;
+                correctEl.textContent = correctCount;
+                showFeedback(true);
+            } else {
+                incorrectCount++;
+                incorrectEl.textContent = incorrectCount;
+                showFeedback(false);
+            }
+        }
+
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value, 10);
+
+            // Clear any existing timeout
+            if (checkTimeout) {
+                clearTimeout(checkTimeout);
+            }
+
+            if (isNaN(userAnswer)) return;
+
+            // If the answer is correct, evaluate immediately
+            if (userAnswer === correctAnswer) {
+                evaluateAnswer();
+                return;
+            }
+
+            // If the correct answer is two digits and user input is single digit, wait
+            if (correctAnswer >= 10 && userAnswer < 10) {
+                checkTimeout = setTimeout(evaluateAnswer, 3000);
+            } else {
+                // For single-digit answers or when user has entered two digits, check immediately
+                evaluateAnswer();
+            }
+        }
+
+        answerInput.addEventListener('input', checkAnswer);
+
+        // Initialize the game
+        generateEquation();
+    </script>
+</body>
+</html>
