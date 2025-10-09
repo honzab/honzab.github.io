@@ -1,156 +1,288 @@
-<!doctype html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplication Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<html>
-    <head>
-        <!-- Recommended meta tags -->
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-        <!-- PyScript CSS -->
-        <link rel="stylesheet" href="https://pyscript.net/releases/2025.8.1/core.css">
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
 
-        <!-- This script tag bootstraps PyScript -->
-        <script type="module" src="https://pyscript.net/releases/2025.8.1/core.js"></script>
+        h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive;
+            letter-spacing: 0.05em;
+        }
 
-        <title>Matte är roligt!</title>
+        h1 span {
+            display: inline-block;
+            animation: bounce 0.5s ease infinite alternate;
+        }
 
-        <style>
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
+        h1 span:nth-child(1) { color: #E63946; animation-delay: 0s; }
+        h1 span:nth-child(2) { color: #2A9D8F; animation-delay: 0.1s; }
+        h1 span:nth-child(3) { color: #E9C46A; animation-delay: 0.2s; }
+        h1 span:nth-child(4) { color: #43AA8B; animation-delay: 0.3s; }
+        h1 span:nth-child(5) { color: #D62828; animation-delay: 0.4s; }
+        h1 span:nth-child(6) { color: #7209B7; animation-delay: 0.5s; }
+        h1 span:nth-child(7) { color: #F72585; animation-delay: 0.6s; }
+        h1 span:nth-child(8) { color: #06A77D; animation-delay: 0.7s; }
+        h1 span:nth-child(9) { color: #F4A261; animation-delay: 0.8s; }
+        h1 span:nth-child(10) { color: #2A9134; animation-delay: 0.9s; }
+        h1 span:nth-child(11) { color: #E63946; animation-delay: 1s; }
+        h1 span:nth-child(12) { color: #4361EE; animation-delay: 1.1s; }
+        h1 span:nth-child(13) { color: #F4A261; animation-delay: 1.2s; }
+        h1 span:nth-child(14) { color: #577590; animation-delay: 1.3s; }
+        h1 span:nth-child(15) { color: #4895EF; animation-delay: 1.4s; }
+        h1 span:nth-child(16) { color: #43AA8B; animation-delay: 1.4s; }
 
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                font-size: 16px;
-                line-height: 1.6;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
+        @keyframes bounce {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-5px); }
+        }
 
-            .pyscript {
-                width: 100%;
-                max-width: 500px;
-            }
+        .equation {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-            main {
-                background: white;
-                border-radius: 20px;
-                padding: 40px 30px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        .input-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        input {
+            font-size: 2rem;
+            padding: 15px 20px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            width: 100%;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 150px;
+            height: 150px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s ease;
+        }
+
+        .feedback.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .checkmark,
+        .crossmark {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+        }
+
+        .checkmark {
+            background: #4caf50;
+            color: white;
+        }
+
+        .crossmark {
+            background: #f44336;
+            color: white;
+        }
+
+        .score {
+            font-size: 1.2rem;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
             }
 
             h1 {
-                color: #333;
-                font-size: 2em;
-                margin-bottom: 30px;
-                text-align: center;
+                font-size: 2rem;
             }
 
-            section > div {
-                margin-bottom: 20px;
+            .equation {
+                font-size: 2.5rem;
+                min-height: 60px;
             }
 
-            #ekvation {
-                font-size: 1.5em;
-                font-weight: bold;
-                color: #667eea;
-                margin-right: 10px;
+            input {
+                font-size: 1.8rem;
+                padding: 12px 15px;
             }
 
-            input[type="number"] {
-                font-size: 18px;
-                padding: 12px 16px;
-                border: 2px solid #ddd;
-                border-radius: 10px;
-                width: 100px;
-                margin-right: 10px;
-                transition: border-color 0.3s;
+            .feedback {
+                width: 120px;
+                height: 120px;
             }
 
-            input[type="number"]:focus {
-                outline: none;
-                border-color: #667eea;
+            .checkmark,
+            .crossmark {
+                font-size: 4rem;
             }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span>M</span><span>a</span><span>t</span><span>t</span><span>e</span>
+            <span> </span>
+            <span>ä</span><span>r</span>
+            <span> </span>
+	    <span>r</span><span>o</span><span>l</span><span>i</span><span>g</span><span>t</span><span>!</span>
+        </h1>
+        <div class="equation" id="equation"></div>
+        <div class="input-container">
+            <input
+                type="number"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                id="answer"
+                placeholder="?"
+                autocomplete="off"
+            >
+        </div>
+        <div class="score">
+            <span id="correct">0</span> rätt | <span id="incorrect">0</span> fel
+        </div>
+    </div>
 
-            button {
-                font-size: 18px;
-                padding: 12px 24px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                border-radius: 10px;
-                cursor: pointer;
-                font-weight: 600;
-                transition: transform 0.2s, box-shadow 0.2s;
-            }
+    <div class="feedback" id="feedback"></div>
 
-            button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-            }
+    <script>
+        let num1, num2, correctAnswer;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let checkTimeout = null;
 
-            button:active {
-                transform: translateY(0);
-            }
+        const equationEl = document.getElementById('equation');
+        const answerInput = document.getElementById('answer');
+        const feedbackEl = document.getElementById('feedback');
+        const correctEl = document.getElementById('correct');
+        const incorrectEl = document.getElementById('incorrect');
 
-            #result {
-                font-size: 1.3em;
-                font-weight: bold;
-                color: #333;
-                display: block;
-                margin-top: 20px;
-                text-align: center;
-            }
+        function generateEquation() {
+            num1 = Math.floor(Math.random() * 9) + 1;
+            num2 = Math.floor(Math.random() * 9) + 1;
+            correctAnswer = num1 * num2;
+            equationEl.textContent = `${num1} × ${num2} = ?`;
+            answerInput.value = '';
+            answerInput.focus();
+        }
 
-            @media (max-width: 480px) {
-                main {
-                    padding: 30px 20px;
+        function showFeedback(isCorrect) {
+            feedbackEl.innerHTML = isCorrect
+                ? '<div class="checkmark">✓</div>'
+                : '<div class="crossmark">✗</div>';
+
+            feedbackEl.classList.add('show');
+
+            setTimeout(() => {
+                feedbackEl.classList.remove('show');
+                if (isCorrect) {
+                    setTimeout(generateEquation, 200);
+                } else {
+                    answerInput.value = '';
+                    answerInput.focus();
                 }
+            }, 800);
+        }
 
-                h1 {
-                    font-size: 1.5em;
-                }
+        function evaluateAnswer() {
+            const userAnswer = parseInt(answerInput.value, 10);
 
-                #ekvation {
-                    font-size: 1.3em;
-                }
+            if (isNaN(userAnswer)) return;
 
-                input[type="number"], button {
-                    font-size: 16px;
-                }
+            if (userAnswer === correctAnswer) {
+                correctCount++;
+                correctEl.textContent = correctCount;
+                showFeedback(true);
+            } else {
+                incorrectCount++;
+                incorrectEl.textContent = incorrectCount;
+                showFeedback(false);
             }
-        </style>
-    </head>
+        }
 
-    <body>
-        <section class="pyscript">
-            <main>
-                <section>
-                    <div>
-                        <h1>Matte är roligt!</h1>
-                    </div>
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value, 10);
 
-                    <div>
-                        <span id="ekvation"></span> = <input id="input-content" type="number" pattern="[0-9]*" size=3 />
-                        <button id="verify-btn" type="submit">Skicka</button>
-                    </div>
-                    <div>
-                        <span id="result"></span>
-                    </div>
-                </section>
-            </main>
+            // Clear any existing timeout
+            if (checkTimeout) {
+                clearTimeout(checkTimeout);
+            }
 
-            <script type="mpy" src="./main.py" config="./pyscript.toml"></script>
-        </section>
-    </body>
-    <script type="text/javascript">
-        document.getElementById("input-content").focus();
+            if (isNaN(userAnswer)) return;
+
+            // If the answer is correct, evaluate immediately
+            if (userAnswer === correctAnswer) {
+                evaluateAnswer();
+                return;
+            }
+
+            // If the correct answer is two digits and user input is single digit, wait
+            if (correctAnswer >= 10 && userAnswer < 10) {
+                checkTimeout = setTimeout(evaluateAnswer, 3000);
+            } else {
+                // For single-digit answers or when user has entered two digits, check immediately
+                evaluateAnswer();
+            }
+        }
+
+        answerInput.addEventListener('input', checkAnswer);
+
+        // Initialize the game
+        generateEquation();
     </script>
+</body>
 </html>
-
