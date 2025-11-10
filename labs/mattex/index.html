@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;700&display=swap');
+
+body {
+  font-family: 'EB Garamond', Garamond, serif;
+  font-size: 12pt;
+}
+
+.email {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11pt;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table td {
+  border: 1px solid black;
+  padding: 5px;
+  font-size: 20pt;
+}
+
+.priklad {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  margin-right: 100px;
+}
+
+.date {
+  text-align: left;
+  margin-bottom: 15px;
+}
+</style>
+</head>
+<body>
+<div class="date" id="date"></div>
+<table border="0" id="exercises"></table>
+
+<script>
+// Set date
+document.getElementById('date').textContent = new Date().toISOString().split('T')[0];
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generatePriklad() {
+  const rand = randomInt(1, 100);
+  if (rand < 33) {
+      const a = randomInt(10, 99);
+      const b = randomInt(10, 99);
+      return `<div class="priklad">${a} × ${b} = </div>`;
+  } else if (rand < 66) {
+      const a = randomInt(10, 500);
+      const b = randomInt(10, 500);
+      return `<div class="priklad">${a} + ${b} = </div>`;
+  } else {
+      let a = randomInt(10, 500);
+      let b = randomInt(10, 500);
+      while (b < a) {
+          a = randomInt(10, 500);
+      }
+      return `<div class="priklad">${b} - ${a} = </div>`;
+  }
+}
+
+// Generate table
+let tableHTML = '';
+for (let r = 0; r < 10; r++) {
+  tableHTML += '<tr>';
+  for (let c = 0; c < 2; c++) {
+      tableHTML += '<td>' + generatePriklad() + '</td>';
+  }
+  tableHTML += '</tr>';
+}
+document.getElementById('exercises').innerHTML = tableHTML;
+</script>
+</body>
+</html>
