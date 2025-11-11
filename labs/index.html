@@ -1,58 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-        <meta http-equiv="Cache-control" content="no-cache" />
-        <meta http-equiv="Pragma" content="no-cache" />
-        <meta http-equiv="Content-Language" content="en" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jan Brůček - Software Engineer</title>
+    <meta name="author" content="Jan Brucek" />
+    <meta name="robots" content="all,follow,index"/>
+    <link rel="shortcut icon" href="https://jan.brucek.se/favicon.ico"/>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background: #304884;
+            background: linear-gradient(to bottom, #304884, #6AA5E9);
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            padding: 20px;
+        }
 
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" />
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" type="text/javascript"></script>
-        <style type="text/css">
-            body, h1, h2, h3 { font-family: "ProximaNova-Regular",Helvetica,Arial,sans-serif; }
-            table td { padding-left: 30px; padding-right: 30px; }
-        </style>
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15), 0 0 15px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
 
-        <title>Labs@Brucek</title>
-          
-        <meta name="author" content="Jan Brucek" />
-        <meta name="robots" content="all,follow,index"/>
-        <link rel="shortcut icon" href="https://jan.brucek.se/favicon.ico"/>
-    </head>
-    <body style="margin: 20px;">
-        <div class="row">
-            <div class="col-xs-12">
-                <h1>Welcome to my labs!</h1>
+        header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.8em;
+            margin-top: 0;
+            margin-bottom: 0.2em;
+            color: #2c3e50;
+        }
+
+        header p {
+            font-size: 1.2em;
+            color: #304884;
+            margin-bottom: 0;
+        }
+
+        h3 {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .project-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .project-card a {
+            text-decoration: none;
+            color: #333;
+        }
+
+        .project-card img {
+            width: 100%;
+            max-width: 250px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-card p {
+            font-size: 1.1em;
+            margin: 0;
+            color: #304884;
+        }
+
+        ul.links {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        ul.links li {
+            margin-bottom: 15px;
+        }
+
+        ul.links li a {
+            text-decoration: none;
+            color: #333;
+            font-size: 1.1em;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+            display: inline-block;
+            background-color: #f0f0f0;
+        }
+
+        ul.links li a:hover,
+        ul.links li a:focus {
+            background-color: #304884;
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #555;
+            text-align: center;
+        }
+
+        footer a {
+            color: #304884;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.2em;
+            }
+            .container {
+                padding: 30px;
+                margin: 20px;
+            }
+            .projects-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            header p {
+                font-size: 1em;
+            }
+            .container {
+                padding: 20px;
+            }
+            h3 {
+                font-size: 1.3em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Welcome to my labs!</h1>
+            <p>Experiments, tools, and fun projects</p>
+        </header>
+
+        <section>
+            <h3>Tools & Utilities</h3>
+            <ul class="links">
+                <li><a href="https://jan.brucek.se/labs/colorcalc.html">The ultimate color calculator</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Interactive Projects</h3>
+            <div class="projects-grid">
+                <div class="project-card">
+                    <a href="matte/index.html">
+                        <img src="matte/scr1.png" alt="Multiplication game screenshot" />
+                        <p>A simple multiplication game</p>
+                    </a>
+                </div>
+                <div class="project-card">
+                    <a href="mattex/index.html">
+                        <img src="mattex/scr2.png" alt="Maths exercise generator screenshot" />
+                        <p>Maths exercises generator</p>
+                    </a>
+                </div>
             </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-12">
-                <h3>Have a look at</h3>
-                <p>
-                    <ul>
-                        <li><a href="https://jan.brucek.se/labs/colorcalc.html">The ultimate color calculator</a></li>
-                    </ul>
-                </p>
-                <p>
-                    <table border="0" style="text-align: center;">
-                        <tr>
-                            <td>
-                                <a href="matte/index.html">
-                                <img src="matte/scr1.png" style="width: 250px;"/><br />
-                                A simple multiplication game</a>
-                            </td>
-                            <td>
-                                <a href="mattex/index.html">
-                                <img src="mattex/scr2.png" style="width: 250px;"/><br />
-                                Maths exercise generator</a>
-                            </td>
-                        </tr>
-                    </table>
-                </p>
-            </div>
-        </div>
-    </body>
+        </section>
+
+        <footer>
+            <p>&copy; <span id="currentYear"></span> | <a href="https://jan.brucek.se/">Home</a></p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+
+</body>
 </html>
