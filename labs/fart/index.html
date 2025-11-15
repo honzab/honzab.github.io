@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fart Button - Jan's Labs</title>
+    <meta name="author" content="Jan Brucek" />
+    <meta name="robots" content="noindex,nofollow"/>
+    <link rel="shortcut icon" href="https://jan.brucek.se/favicon.ico"/>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        }
+
+        body {
+            background: #304884;
+            background: linear-gradient(to bottom, #304884, #6AA5E9);
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15), 0 0 15px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.8em;
+            margin-top: 0;
+            margin-bottom: 0.5em;
+            color: #2c3e50;
+        }
+
+        #fartButton {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            font-size: 3em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            margin: 30px auto;
+            display: block;
+        }
+
+        #fartButton:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        #fartButton:active {
+            transform: scale(0.95);
+        }
+
+        #fartButton.playing {
+            animation: shake 0.5s;
+            animation-iteration-count: 1;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        footer a {
+            color: #304884;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2em;
+            }
+            .container {
+                padding: 30px;
+            }
+            #fartButton {
+                width: 200px;
+                height: 200px;
+                font-size: 2.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            .container {
+                padding: 20px;
+            }
+            #fartButton {
+                width: 180px;
+                height: 180px;
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>The Fart Button</h1>
+        <button id="fartButton">💨</button>
+        <footer>
+            <p><a href="index.html">Back to Labs</a></p>
+        </footer>
+    </div>
+
+    <script>
+        const button = document.getElementById('fartButton');
+        let audioContext;
+
+        // Initialize audio context on first user interaction (required for iOS)
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            // Resume context if suspended (iOS requirement)
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        function playFart() {
+            initAudio();
+
+            const now = audioContext.currentTime;
+
+            // Create oscillator for the fart sound
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Fart sound characteristics
+            oscillator.type = 'sawtooth';
+
+            // Frequency envelope (descending pitch)
+            oscillator.frequency.setValueAtTime(120, now);
+            oscillator.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+            oscillator.frequency.exponentialRampToValueAtTime(60, now + 0.4);
+            oscillator.frequency.exponentialRampToValueAtTime(30, now + 0.6);
+
+            // Volume envelope
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.15, now + 0.3);
+            gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.4);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+            // Start and stop
+            oscillator.start(now);
+            oscillator.stop(now + 0.6);
+
+            // Add shake animation
+            button.classList.add('playing');
+            setTimeout(() => {
+                button.classList.remove('playing');
+            }, 500);
+        }
+
+        button.addEventListener('click', playFart);
+
+        // Also support touch events for better mobile experience
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            playFart();
+        });
+    </script>
+</body>
+</html>
