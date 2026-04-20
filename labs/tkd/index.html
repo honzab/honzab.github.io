@@ -72,11 +72,14 @@
             transition: border-color 0.15s, background 0.15s;
             width: 100%;
             text-align: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .answer-btn:hover:not(:disabled) {
-            border-color: #c0392b;
-            background: #fdf2f2;
+        @media (hover: hover) {
+            .answer-btn:hover:not(:disabled) {
+                border-color: #c0392b;
+                background: #fdf2f2;
+            }
         }
 
         .answer-btn.correct {
@@ -95,6 +98,10 @@
 
         .answer-btn:disabled {
             cursor: default;
+        }
+
+        .answer-btn:focus {
+            outline: none;
         }
 
         .score {
@@ -344,6 +351,7 @@
 
         function nextQuestion() {
             locked = false;
+            document.activeElement?.blur();
             koreanToSwedish = Math.random() < 0.5;
             currentTerm = terms[Math.floor(Math.random() * terms.length)];
             const options = shuffle([currentTerm, ...pickWrong(currentTerm, 2)]);
