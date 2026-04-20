@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taekwon-Do Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #c0392b 0%, #6e1f1a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #c0392b;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: #999;
+            margin-bottom: 35px;
+        }
+
+        .question {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .answers {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .answer-btn {
+            font-size: 1.1rem;
+            padding: 15px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            width: 100%;
+            text-align: center;
+        }
+
+        .answer-btn:hover:not(:disabled) {
+            border-color: #c0392b;
+            background: #fdf2f2;
+        }
+
+        .answer-btn.correct {
+            border-color: #4caf50;
+            background: #e8f5e9;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .answer-btn.wrong {
+            border-color: #f44336;
+            background: #ffebee;
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .answer-btn:disabled {
+            cursor: default;
+        }
+
+        .score {
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 150px;
+            height: 150px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .feedback.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .checkmark,
+        .crossmark {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+        }
+
+        .checkmark {
+            background: #4caf50;
+            color: white;
+        }
+
+        .crossmark {
+            background: #f44336;
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 1.6rem;
+            }
+
+            .question {
+                font-size: 1.6rem;
+            }
+
+            .answer-btn {
+                font-size: 1rem;
+                padding: 12px 15px;
+            }
+
+            .feedback {
+                width: 120px;
+                height: 120px;
+            }
+
+            .checkmark,
+            .crossmark {
+                font-size: 4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Taekwon-Do Quiz</h1>
+        <div class="subtitle" id="subtitle"></div>
+        <div class="question" id="question"></div>
+        <div class="answers" id="answers"></div>
+        <div class="score">
+            <span id="correct">0</span> rätt | <span id="incorrect">0</span> fel
+        </div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <script>
+        const terms = [
+            // Kommandon
+            ["Charyot", "Givakt"],
+            ["Kyong ye", "Bugning"],
+            ["Joon bi", "Färdiga"],
+            ["Si jak", "Börja"],
+            ["Kal yeo", "Bryt"],
+            ["Gye sok", "Fortsätt"],
+            ["Ba ro", "Återgå"],
+            ["Shi o", "Vila"],
+
+            // Allmänna termer
+            ["Do bok", "Träningsdräkt"],
+            ["Do jang", "Träningshall"],
+            ["Sabum", "Instruktör (4:e dan och uppåt)"],
+            ["Kihap", "Kampsrop"],
+            ["Tul", "Mönster"],
+            ["Ho sin sul", "Självförsvar"],
+            ["Kyok pa", "Brytteknik"],
+            ["Dan", "Svart bälte-grad"],
+            ["Kup", "Färgat bälte-grad"],
+            ["Ilbo matsogi", "En-stegs sparring"],
+            ["Sambo matsogi", "Tre-stegs sparring"],
+
+            // Nivåer
+            ["Nopunde", "Högt (övre nivå)"],
+            ["Kaunde", "Mellannivå"],
+            ["Najunde", "Lågt (nedre nivå)"],
+
+            // Riktningar
+            ["Ap", "Fram"],
+            ["Dwit", "Bak"],
+            ["Yop", "Sida"],
+            ["An", "Inåt"],
+            ["Bakat", "Utåt"],
+            ["Tora", "Vänd om"],
+
+            // Sparkar
+            ["Ap chagi", "Frontspark"],
+            ["Dollyo chagi", "Rundspark"],
+            ["Yop chagi", "Sidespark"],
+            ["Dwit chagi", "Bakspark"],
+            ["Bandal chagi", "Halvmånespark"],
+            ["Bituro chagi", "Vridespark"],
+            ["Naeryo chagi", "Nedåtspark"],
+            ["Twimyo ap chagi", "Hoppande frontspark"],
+            ["Twimyo yop chagi", "Hoppande sidospark"],
+            ["Tora dollyo chagi", "Snurrrundspark"],
+
+            // Block (Makgi)
+            ["Najunde makgi", "Låg blockering"],
+            ["Kaunde makgi", "Mellan blockering"],
+            ["Nopunde makgi", "Högt blockering"],
+            ["Sonkal makgi", "Knivhandsblockering"],
+            ["Hechyo makgi", "Utåtblockering"],
+            ["Golcho makgi", "Krokande blockering"],
+            ["Dung sonkal makgi", "Ryggknivhandsblockering"],
+
+            // Handtekniker och vapenytor
+            ["Jirugi", "Slag"],
+            ["Sonkal", "Knivhand"],
+            ["Sonkal dung", "Ryggknivhand"],
+            ["Batangson", "Handflata"],
+            ["Dung joomok", "Ryggknytnäve"],
+            ["Ap joomok", "Framknytnäve"],
+            ["Sonkut", "Fingerspets"],
+            ["Palkup", "Armbåge"],
+            ["Murup", "Knä"],
+
+            // Fotytor
+            ["Ap balbadak", "Fotboll (framfot)"],
+            ["Dwitchook", "Häl"],
+            ["Balkal", "Fotkniv (utsida)"],
+            ["Baldung", "Fotrygg"],
+
+            // Ställningar (Sogi)
+            ["Narani sogi", "Parallellställning"],
+            ["Moa sogi", "Sluten ställning"],
+            ["Gunnun sogi", "Gående ställning"],
+            ["Niunja sogi", "L-ställning"],
+            ["Annun sogi", "Sittande ställning"],
+            ["Dwit bal sogi", "Bakrebensställning"],
+            ["Gojung sogi", "Fixerad ställning"],
+            ["Kyocha sogi", "X-ställning"],
+
+            // Former (Tul)
+            ["Chon-ji", "Himmel och jord"],
+            ["Dan-gun", "Koreas legendariske grundare"],
+            ["Do-san", "Patrioten Ahn Chang-ho"],
+            ["Won-hyo", "Munken som förde buddhismen till Silla"],
+            ["Yul-gok", "Filosofen Yi I"],
+            ["Joong-gun", "Patrioten Ahn Jung-geun"],
+            ["Toi-gye", "Filosofen Yi Hwang"],
+            ["Hwa-rang", "Hwa-rang-ungdomsrörelsen"],
+            ["Choong-moo", "Amiral Yi Sun-sin"],
+
+            // Räkneord (koreanska)
+            ["Hana", "Ett"],
+            ["Dul", "Två"],
+            ["Set", "Tre"],
+            ["Net", "Fyra"],
+            ["Dasot", "Fem"],
+            ["Yosot", "Sex"],
+            ["Ilgop", "Sju"],
+            ["Yodol", "Åtta"],
+            ["Ahop", "Nio"],
+            ["Yol", "Tio"],
+        ];
+
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let currentTerm = null;
+        let koreanToSwedish = true;
+        let locked = false;
+
+        const questionEl = document.getElementById('question');
+        const subtitleEl = document.getElementById('subtitle');
+        const answersEl = document.getElementById('answers');
+        const feedbackEl = document.getElementById('feedback');
+        const correctEl = document.getElementById('correct');
+        const incorrectEl = document.getElementById('incorrect');
+
+        function pickWrong(exclude, count) {
+            const pool = terms.filter(t => t !== exclude).slice();
+            const result = [];
+            while (result.length < count && pool.length > 0) {
+                const idx = Math.floor(Math.random() * pool.length);
+                result.push(pool.splice(idx, 1)[0]);
+            }
+            return result;
+        }
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function nextQuestion() {
+            locked = false;
+            koreanToSwedish = Math.random() < 0.5;
+            currentTerm = terms[Math.floor(Math.random() * terms.length)];
+            const options = shuffle([currentTerm, ...pickWrong(currentTerm, 2)]);
+
+            const qIdx = koreanToSwedish ? 0 : 1;
+            const aIdx = koreanToSwedish ? 1 : 0;
+
+            subtitleEl.textContent = koreanToSwedish
+                ? 'Vad betyder det koreanska ordet?'
+                : 'Vad är det koreanska ordet för?';
+            questionEl.textContent = currentTerm[qIdx];
+            answersEl.innerHTML = '';
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = opt[aIdx];
+                btn.addEventListener('click', () => handleAnswer(btn, opt));
+                answersEl.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(btn, chosen) {
+            if (locked) return;
+            locked = true;
+
+            const isCorrect = chosen === currentTerm;
+            const aIdx = koreanToSwedish ? 1 : 0;
+
+            document.querySelectorAll('.answer-btn').forEach(b => {
+                b.disabled = true;
+                if (b.textContent === currentTerm[aIdx]) {
+                    b.classList.add('correct');
+                }
+            });
+
+            if (isCorrect) {
+                correctCount++;
+                correctEl.textContent = correctCount;
+            } else {
+                btn.classList.add('wrong');
+                incorrectCount++;
+                incorrectEl.textContent = incorrectCount;
+            }
+
+            showFeedback(isCorrect);
+        }
+
+        function showFeedback(isCorrect) {
+            feedbackEl.innerHTML = isCorrect
+                ? '<div class="checkmark">✓</div>'
+                : '<div class="crossmark">✗</div>';
+            feedbackEl.classList.add('show');
+
+            setTimeout(() => {
+                feedbackEl.classList.remove('show');
+                setTimeout(nextQuestion, 100);
+            }, 450);
+        }
+
+        nextQuestion();
+    </script>
+</body>
+</html>
