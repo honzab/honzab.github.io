@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taekwon-Do Snurran</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 640px;
+            width: 100%;
+            min-width: 0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #c0392b;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+
+        .wheel-wrap {
+            position: relative;
+            width: 100%;
+            min-width: 0;
+            margin: 0 auto;
+        }
+
+        canvas {
+            display: block;
+            cursor: pointer;
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-top: 32px solid #2c3e50;
+            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+            pointer-events: none;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 20px;
+            padding: 36px 30px 30px;
+            max-width: 440px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+            transform: scale(0.75);
+            transition: transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .modal.show .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-label {
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.85rem;
+            color: #999;
+            margin-bottom: 12px;
+        }
+
+        .modal-item {
+            font-size: clamp(2rem, 8vw, 3rem);
+            font-weight: bold;
+            color: #c0392b;
+            line-height: 1.15;
+            margin-bottom: 26px;
+            overflow-wrap: break-word;
+        }
+
+        .modal-close {
+            background: #c0392b;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 13px 40px;
+            border-radius: 50px;
+            box-shadow: 0 4px 0 #8e2a20;
+        }
+
+        .modal-close:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #8e2a20;
+        }
+
+        .modal-close:focus {
+            outline: none;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+        }
+
+        .spin-btn {
+            margin-top: 22px;
+            background: #c0392b;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 15px 50px;
+            border-radius: 50px;
+            box-shadow: 0 4px 0 #8e2a20;
+            transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+        }
+
+        .spin-btn:hover:not(:disabled) {
+            background: #d04434;
+        }
+
+        .spin-btn:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #8e2a20;
+        }
+
+        .spin-btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .spin-btn:focus {
+            outline: none;
+        }
+
+        .controls {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .duration {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .duration input[type="range"] {
+            flex: 1;
+            max-width: 200px;
+            accent-color: #c0392b;
+        }
+
+        .duration .value {
+            font-variant-numeric: tabular-nums;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 3.2em;
+            text-align: left;
+        }
+
+        .link-btn {
+            background: none;
+            color: #c0392b;
+            text-decoration: underline;
+            font-size: 0.95rem;
+            padding: 8px;
+            margin-top: 8px;
+        }
+
+        .editor {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .editor.open {
+            display: block;
+        }
+
+        .editor textarea {
+            font-family: inherit;
+            font-size: 1rem;
+            width: 100%;
+            height: 220px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            resize: vertical;
+        }
+
+        .editor textarea:focus {
+            outline: none;
+            border-color: #c0392b;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .editor-actions button {
+            font-size: 0.95rem;
+            padding: 10px 18px;
+            border-radius: 8px;
+            background: #eee;
+            color: #2c3e50;
+        }
+
+        .editor-actions button.primary {
+            background: #c0392b;
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px 18px;
+            }
+
+            h1 {
+                font-size: 1.6rem;
+            }
+
+            .spin-btn {
+                padding: 14px 40px;
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Taekwon-Do Snurran</h1>
+        <div class="subtitle">Snurra hjulet!</div>
+
+        <div class="wheel-wrap">
+            <canvas id="wheel" width="560" height="560"></canvas>
+            <div class="pointer"></div>
+        </div>
+
+        <button class="spin-btn" id="spin">Snurra!</button>
+
+        <div class="controls">
+            <div class="duration">
+                <label for="duration">Snurrtid</label>
+                <input type="range" id="duration" min="0.5" max="3" step="0.1" value="1">
+                <span class="value" id="durationValue">1,0 s</span>
+            </div>
+            <button class="link-btn" id="toggleEditor">Ändra listan</button>
+            <div class="editor" id="editor">
+                <textarea id="itemsInput" spellcheck="false"></textarea>
+                <div class="editor-actions">
+                    <button class="primary" id="saveItems">Spara</button>
+                    <button id="resetItems">Återställ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <div class="modal-label">Hjulet valde</div>
+            <div class="modal-item" id="modalItem" aria-live="polite"></div>
+            <button class="modal-close" id="modalClose">Kör!</button>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_ITEMS = [
+            // Tul till och med 1 kup
+            'Chon-Ji',
+            'Dan-Gun',
+            'Do-San',
+            'Won-Hyo',
+            'Yul-Gok',
+            'Joong-Gun',
+            'Toi-Gye',
+            'Hwa-Rang',
+            'Choong-Moo',
+            // Övrigt
+            '10 armhävningar',
+            '10 situps',
+            '60s jägarvila',
+            '45s vattenpaus',
+            'Gruppkram',
+            'Hylla Erik'
+        ];
+
+        const COLORS = [
+            '#c0392b', '#2c3e50', '#16a085', '#d35400',
+            '#8e44ad', '#27ae60', '#2980b9', '#b7950b'
+        ];
+
+        const STORAGE_KEY = 'tkd-snurran-items';
+        const MAX_DURATION = 3;
+
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const modal = document.getElementById('modal');
+        const modalItem = document.getElementById('modalItem');
+        const modalClose = document.getElementById('modalClose');
+        const spinBtn = document.getElementById('spin');
+        const durationInput = document.getElementById('duration');
+        const durationValue = document.getElementById('durationValue');
+        const toggleEditorBtn = document.getElementById('toggleEditor');
+        const editor = document.getElementById('editor');
+        const itemsInput = document.getElementById('itemsInput');
+        const saveBtn = document.getElementById('saveItems');
+        const resetBtn = document.getElementById('resetItems');
+
+        let items = loadItems();
+        let rotation = -Math.PI / 2;
+        let spinning = false;
+
+        function loadItems() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+                }
+            } catch (e) {
+                // Ignorera trasig localStorage
+            }
+            return DEFAULT_ITEMS.slice();
+        }
+
+        function saveItems() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+            } catch (e) {
+                // Ingen lagring tillgänglig, kör vidare ändå
+            }
+        }
+
+        function sliceColor(i) {
+            // Undvik att första och sista slicen får samma färg
+            if (i === items.length - 1 && items.length > 1 &&
+                COLORS[i % COLORS.length] === COLORS[0]) {
+                return COLORS[(i + 1) % COLORS.length];
+            }
+            return COLORS[i % COLORS.length];
+        }
+
+        function setupCanvas() {
+            // Så stort hjul som får plats på bredden, men lämna plats för
+            // knapp och reglage så allt syns utan att scrolla på mobilen.
+            const available = canvas.parentElement.clientWidth;
+            const maxByHeight = Math.max(260, window.innerHeight - 290);
+            const size = Math.min(available, maxByHeight, 560);
+            const dpr = window.devicePixelRatio || 1;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            drawWheel();
+        }
+
+        function drawWheel() {
+            const size = parseFloat(canvas.style.width) || canvas.width;
+            const cx = size / 2;
+            const cy = size / 2;
+            const radius = size / 2 - 6;
+            const n = items.length;
+            const arc = (2 * Math.PI) / n;
+
+            ctx.clearRect(0, 0, size, size);
+
+            for (let i = 0; i < n; i++) {
+                const start = rotation + i * arc;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, start, start + arc);
+                ctx.closePath();
+                ctx.fillStyle = sliceColor(i);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Texten följer sin tårtbit och byter aldrig riktning under snurren
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(start + arc / 2);
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'white';
+
+                let fontSize = Math.min(24, Math.max(9, (arc * radius) * 0.55));
+                const maxWidth = radius - 34;
+                do {
+                    ctx.font = 'bold ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    if (ctx.measureText(items[i]).width <= maxWidth) break;
+                    fontSize -= 1;
+                } while (fontSize > 7);
+
+                ctx.fillText(items[i], radius - 14, 0, maxWidth);
+                ctx.restore();
+            }
+
+            // Nav i mitten
+            ctx.beginPath();
+            ctx.arc(cx, cy, Math.max(22, radius * 0.12), 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        function spin() {
+            if (spinning || items.length === 0) return;
+            spinning = true;
+            spinBtn.disabled = true;
+            closeModal();
+
+            const duration = Math.min(MAX_DURATION, parseFloat(durationInput.value)) * 1000;
+            const n = items.length;
+            const arc = (2 * Math.PI) / n;
+            const winner = Math.floor(Math.random() * n);
+
+            // Vinnarens mitt ska hamna under pekaren rakt upp (-PI/2)
+            const pointerAngle = -Math.PI / 2;
+            const targetBase = pointerAngle - (winner + 0.5) * arc;
+            const turns = Math.max(2, Math.round((duration / 1000) * 3));
+            let delta = targetBase - rotation;
+            delta = ((delta % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+            delta += turns * 2 * Math.PI;
+
+            const startRotation = rotation;
+            const startTime = performance.now();
+
+            function frame(now) {
+                const t = Math.min(1, (now - startTime) / duration);
+                rotation = startRotation + delta * easeOutCubic(t);
+                drawWheel();
+
+                if (t < 1) {
+                    requestAnimationFrame(frame);
+                } else {
+                    rotation = targetBase;
+                    drawWheel();
+                    spinning = false;
+                    spinBtn.disabled = false;
+                    showResult(items[winner]);
+                }
+            }
+
+            requestAnimationFrame(frame);
+        }
+
+        function showResult(item) {
+            modalItem.textContent = item;
+            modal.classList.add('show');
+            modalClose.focus({ preventScroll: true });
+        }
+
+        function closeModal() {
+            modal.classList.remove('show');
+        }
+
+        function formatDuration(value) {
+            return value.toFixed(1).replace('.', ',') + ' s';
+        }
+
+        durationInput.addEventListener('input', () => {
+            durationValue.textContent = formatDuration(parseFloat(durationInput.value));
+        });
+
+        spinBtn.addEventListener('click', spin);
+        canvas.addEventListener('click', spin);
+
+        toggleEditorBtn.addEventListener('click', () => {
+            const open = editor.classList.toggle('open');
+            toggleEditorBtn.textContent = open ? 'Stäng listan' : 'Ändra listan';
+            if (open) {
+                itemsInput.value = items.join('\n');
+                itemsInput.focus();
+            }
+        });
+
+        saveBtn.addEventListener('click', () => {
+            const next = itemsInput.value
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            if (next.length < 2) {
+                alert('Listan behöver minst två rader.');
+                return;
+            }
+
+            items = next;
+            saveItems();
+            rotation = -Math.PI / 2;
+            drawWheel();
+            editor.classList.remove('open');
+            toggleEditorBtn.textContent = 'Ändra listan';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            items = DEFAULT_ITEMS.slice();
+            saveItems();
+            itemsInput.value = items.join('\n');
+            rotation = -Math.PI / 2;
+            drawWheel();
+        });
+
+        modalClose.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        window.addEventListener('resize', setupCanvas);
+        window.addEventListener('orientationchange', () => setTimeout(setupCanvas, 150));
+
+        durationValue.textContent = formatDuration(parseFloat(durationInput.value));
+        itemsInput.value = items.join('\n');
+        setupCanvas();
+    </script>
+</body>
+</html>
