@@ -345,6 +345,8 @@
 
         const STORAGE_KEY = 'tkd-snurran-items';
         const TEXT_SCALE = 0.85;
+        const HUB_SCALE = 1.2;
+        const HUB_BORDER = 3;
         const MAX_DURATION = 3;
 
         const canvas = document.getElementById('wheel');
@@ -360,6 +362,10 @@
         const itemsInput = document.getElementById('itemsInput');
         const saveBtn = document.getElementById('saveItems');
         const resetBtn = document.getElementById('resetItems');
+
+        const logo = new Image();
+        logo.src = '21944.png';
+        logo.addEventListener('load', drawWheel);
 
         let items = loadItems();
         let rotation = -Math.PI / 2;
@@ -417,7 +423,7 @@
             const radius = size / 2 - 6;
             const n = items.length;
             const arc = (2 * Math.PI) / n;
-            const hubRadius = Math.max(22, radius * 0.12);
+            const hubRadius = Math.max(22, radius * 0.12) * HUB_SCALE;
 
             ctx.clearRect(0, 0, size, size);
 
@@ -444,7 +450,7 @@
 
                 let fontSize = Math.min(24, Math.max(9, (arc * radius) * 0.55)) * TEXT_SCALE;
                 // Sluta innan navet så texten inte klistrar sig mot mitten
-                const maxWidth = radius - 14 - hubRadius - 8;
+                const maxWidth = radius - 14 - hubRadius - HUB_BORDER - 8;
                 do {
                     ctx.font = 'bold ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     if (ctx.measureText(items[i]).width <= maxWidth) break;
@@ -455,14 +461,30 @@
                 ctx.restore();
             }
 
-            // Nav i mitten
+            // Nav i mitten med klubbmärket, med vit kant runt om
             ctx.beginPath();
-            ctx.arc(cx, cy, hubRadius, 0, 2 * Math.PI);
+            ctx.arc(cx, cy, hubRadius + HUB_BORDER, 0, 2 * Math.PI);
             ctx.fillStyle = 'white';
             ctx.fill();
-            ctx.strokeStyle = '#c0392b';
-            ctx.lineWidth = 4;
-            ctx.stroke();
+
+            if (logo.complete && logo.naturalWidth > 0) {
+                // Hela märket ska synas, utan att tänjas
+                const scale = Math.min((2 * hubRadius) / logo.naturalWidth,
+                                       (2 * hubRadius) / logo.naturalHeight);
+                const w = logo.naturalWidth * scale;
+                const h = logo.naturalHeight * scale;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cx, cy, hubRadius, 0, 2 * Math.PI);
+                ctx.clip();
+                ctx.drawImage(logo, cx - w / 2, cy - h / 2, w, h);
+                ctx.restore();
+            } else {
+                ctx.strokeStyle = '#c0392b';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
         }
 
         function easeOutCubic(t) {
