@@ -344,6 +344,7 @@
         ];
 
         const STORAGE_KEY = 'tkd-snurran-items';
+        const TEXT_SCALE = 0.85;
         const MAX_DURATION = 3;
 
         const canvas = document.getElementById('wheel');
@@ -416,6 +417,7 @@
             const radius = size / 2 - 6;
             const n = items.length;
             const arc = (2 * Math.PI) / n;
+            const hubRadius = Math.max(22, radius * 0.12);
 
             ctx.clearRect(0, 0, size, size);
 
@@ -440,8 +442,9 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = 'white';
 
-                let fontSize = Math.min(24, Math.max(9, (arc * radius) * 0.55));
-                const maxWidth = radius - 34;
+                let fontSize = Math.min(24, Math.max(9, (arc * radius) * 0.55)) * TEXT_SCALE;
+                // Sluta innan navet så texten inte klistrar sig mot mitten
+                const maxWidth = radius - 14 - hubRadius - 8;
                 do {
                     ctx.font = 'bold ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     if (ctx.measureText(items[i]).width <= maxWidth) break;
@@ -454,7 +457,7 @@
 
             // Nav i mitten
             ctx.beginPath();
-            ctx.arc(cx, cy, Math.max(22, radius * 0.12), 0, 2 * Math.PI);
+            ctx.arc(cx, cy, hubRadius, 0, 2 * Math.PI);
             ctx.fillStyle = 'white';
             ctx.fill();
             ctx.strokeStyle = '#c0392b';
