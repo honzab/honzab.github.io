@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pannan — värmekurva &amp; rumskompensering</title>
+<meta name="author" content="Jan Brucek" />
+<meta name="description" content="Simulator för DUC:ens värmekurva: framledningstemperatur som funktion av utomhustemperatur, med rumskompensering." />
+<link rel="shortcut icon" href="https://jan.brucek.se/favicon.ico"/>
+<style>
+  :root {
+    color-scheme: light;
+    --plane:          #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --axis:           #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;   /* med rumskomp. (effective) */
+    --series-2:       #eb6834;   /* utan rumskomp. (configured) */
+    --warning:        #fab219;
+    --critical:       #d03b3b;
+    --field:          #ffffff;
+    --field-ring:     #d8d7d0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --plane:          #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --field:          #232322;
+      --field-ring:     #3a3a37;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:          #0d0d0d;
+    --surface-1:      #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --field:          #232322;
+    --field-ring:     #3a3a37;
+  }
+
+  * { box-sizing: border-box; }
+  body, html { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--plane);
+    color: var(--text-primary);
+    line-height: 1.5;
+    padding: 24px 16px 40px;
+    display: flex;
+    justify-content: center;
+  }
+  .container {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+    max-width: 1060px;
+    width: 100%;
+    padding: 28px 28px 20px;
+  }
+
+  header h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p  { margin: 0; color: var(--text-secondary); font-size: 0.95rem; }
+  header .sub { color: var(--text-muted); font-size: 0.85rem; margin-top: 6px; }
+
+  .layout { display: flex; gap: 28px; margin-top: 24px; align-items: flex-start; }
+  .chart-col { flex: 1 1 auto; min-width: 0; }
+  .panel { flex: 0 0 290px; }
+
+  /* ---- legend ---- */
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
+  .legend-item {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.82rem; color: var(--text-secondary);
+  }
+  .legend-item.is-dim { opacity: 0.45; }
+  .key { width: 16px; height: 2px; border-radius: 1px; flex: none; }
+  .key.s1 { background: var(--series-1); }
+  .key.s2 { background: var(--series-2); }
+
+  /* ---- chart ---- */
+  .chart-wrap { position: relative; }
+  canvas { display: block; width: 100%; touch-action: none; cursor: crosshair; }
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    transition: opacity 0.12s ease;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    padding: 8px 10px; min-width: 132px;
+    font-size: 0.8rem; z-index: 5;
+  }
+  .tooltip.is-on { opacity: 1; }
+  .tooltip .tt-head {
+    font-size: 0.72rem; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 5px;
+  }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+  .tooltip .tt-val {
+    font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; margin-left: auto;
+  }
+  .tooltip .tt-name { color: var(--text-secondary); }
+
+  /* ---- panel: toggle ---- */
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 10px; margin-bottom: 14px;
+  }
+  .toggle-row label { font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+  .toggle-row .gloss { display: block; font-weight: 400; font-size: 0.75rem; color: var(--text-muted); }
+  .toggle-row input { width: 18px; height: 18px; accent-color: var(--series-1); cursor: pointer; flex: none; }
+
+  /* ---- panel: hero ---- */
+  .hero { margin-bottom: 4px; }
+  .hero .hero-label {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .hero .hero-value { font-size: 3rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+  .hero .hero-value .unit { font-size: 1.3rem; font-weight: 500; color: var(--text-secondary); }
+  .hero .hero-note { font-size: 0.78rem; color: var(--text-muted); min-height: 1.2em; }
+  .hero .hero-note.is-flag { color: var(--critical); }
+
+  /* ---- panel: comparison ---- */
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden; margin: 14px 0;
+  }
+  .compare > div { background: var(--surface-1); padding: 9px 11px; }
+  .compare .c-label { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--text-muted); }
+  .compare .c-value { font-size: 1.22rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .compare .is-active { box-shadow: inset 2px 0 0 var(--series-1); }
+  .compare-diff {
+    grid-column: 1 / -1; font-size: 0.8rem; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- panel: breakdown ---- */
+  .breakdown { border-top: 1px solid var(--border); }
+  .breakdown .row {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.84rem;
+  }
+  .breakdown .row.is-dim { opacity: 0.5; }
+  .breakdown .r-label { color: var(--text-secondary); }
+  .breakdown .r-label small { display: block; color: var(--text-muted); font-size: 0.72rem; }
+  .breakdown .r-value {
+    margin-left: auto; text-align: right; font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .breakdown .r-value small { display: block; font-weight: 400; color: var(--text-muted); font-size: 0.72rem; }
+  .breakdown .r-value.is-flag { color: var(--critical); }
+
+  /* ---- controls ---- */
+  .controls { margin-top: 22px; }
+  .control { margin-bottom: 16px; }
+  .control.is-off { opacity: 0.45; }
+  .control .c-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+  .control .c-name { font-size: 0.84rem; font-weight: 600; }
+  .control .c-gloss { font-size: 0.72rem; color: var(--text-muted); }
+  .control .c-inputs { display: flex; align-items: center; gap: 10px; }
+  .control input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--series-1); }
+  .control input[type=number] {
+    flex: none; width: 74px; padding: 5px 7px; text-align: right;
+    font: inherit; font-size: 0.86rem; font-variant-numeric: tabular-nums;
+    color: var(--text-primary); background: var(--field);
+    border: 1px solid var(--field-ring); border-radius: 7px;
+  }
+  .control input:focus-visible, .toggle-row input:focus-visible,
+  textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--series-1); outline-offset: 1px;
+  }
+
+  /* ---- details blocks ---- */
+  details {
+    margin-top: 16px; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+  }
+  details > summary {
+    cursor: pointer; font-size: 0.86rem; font-weight: 600;
+    color: var(--text-secondary); list-style: none;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸ "; color: var(--text-muted); }
+  details[open] > summary::before { content: "▾ "; }
+  .cfg-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px; margin-top: 14px;
+  }
+  .cfg-field label { display: block; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px; }
+  .cfg-field label small { display: block; color: var(--text-muted); font-size: 0.7rem; }
+  .cfg-field input[type=number] {
+    width: 100%; padding: 6px 8px; font: inherit; font-size: 0.85rem;
+    font-variant-numeric: tabular-nums; color: var(--text-primary);
+    background: var(--field); border: 1px solid var(--field-ring); border-radius: 7px;
+  }
+  .cfg-field.inline { display: flex; align-items: center; gap: 8px; }
+  .cfg-field.inline input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--series-1); }
+  .cfg-field.inline label { margin: 0; }
+  .cfg-wide { grid-column: 1 / -1; }
+  textarea {
+    width: 100%; min-height: 72px; resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.76rem; line-height: 1.5; padding: 8px 10px;
+    color: var(--text-primary); background: var(--field);
+    border: 1px solid var(--field-ring); border-radius: 8px;
+  }
+  .cfg-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+  .cfg-error { font-size: 0.78rem; color: var(--critical); margin-top: 6px; min-height: 1.2em; }
+  .cfg-actions { display: flex; gap: 10px; margin-top: 14px; }
+  button {
+    font: inherit; font-size: 0.82rem; padding: 6px 13px;
+    color: var(--text-primary); background: var(--field);
+    border: 1px solid var(--field-ring); border-radius: 7px; cursor: pointer;
+  }
+  button:hover { border-color: var(--text-muted); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.82rem; }
+  th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--text-muted); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  tbody tr.is-here td { background: color-mix(in srgb, var(--series-1) 9%, transparent); }
+
+  footer {
+    margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--text-muted);
+  }
+  footer a { color: var(--series-1); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 820px) {
+    .layout { flex-direction: column; gap: 22px; }
+    .panel { flex: 1 1 auto; width: 100%; }
+    .container { padding: 20px 16px 16px; }
+    header h1 { font-size: 1.35rem; }
+    .hero .hero-value { font-size: 2.6rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Pannan</h1>
+    <p>Värmekurva och rumskompensering — vilken framledningstemperatur begär DUC:en?</p>
+    <p class="sub">Flytta utomhustemperaturen och läs av börvärdet. Klicka i diagrammet för att sätta temperaturen.</p>
+  </header>
+
+  <div class="layout">
+    <div class="chart-col">
+      <div class="legend">
+        <span class="legend-item" id="legend-eff"><span class="key s1"></span>Med rumskompensering</span>
+        <span class="legend-item" id="legend-base"><span class="key s2"></span>Kurvans börvärde (utan rumskomp.)</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="plot" role="img"
+          aria-label="Värmekurva: framledningstemperatur mot utomhustemperatur. Tabellen under diagrammet innehåller samma värden."></canvas>
+        <div class="tooltip" id="tooltip" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="toggle-row">
+        <input type="checkbox" id="comp-toggle" checked>
+        <label for="comp-toggle">Rumskompensering
+          <span class="gloss">på / helt av</span>
+        </label>
+      </div>
+
+      <div class="hero">
+        <div class="hero-label" id="hero-label">Framledning</div>
+        <div class="hero-value"><span id="hero-value">—</span><span class="unit"> °C</span></div>
+        <div class="hero-note" id="hero-note"></div>
+      </div>
+
+      <div class="compare">
+        <div id="cmp-off-cell">
+          <div class="c-label"><span class="key s2"></span>Utan rumskomp.</div>
+          <div class="c-value" id="cmp-off">—</div>
+        </div>
+        <div id="cmp-on-cell">
+          <div class="c-label"><span class="key s1"></span>Med rumskomp.</div>
+          <div class="c-value" id="cmp-on">—</div>
+        </div>
+        <div class="compare-diff" id="cmp-diff"></div>
+      </div>
+
+      <div class="breakdown" id="breakdown"></div>
+
+      <div class="controls" id="controls"></div>
+    </aside>
+  </div>
+
+  <details id="cfg">
+    <summary>DUC-konfiguration</summary>
+    <div class="cfg-grid">
+      <div class="cfg-wide">
+        <div class="cfg-field">
+          <label for="cfg-curve">Värmekurva
+            <small>DUC:ens format: <code>{[x=-20.000000;y=66.000000;],…}</code></small>
+          </label>
+          <textarea id="cfg-curve" spellcheck="false"></textarea>
+        </div>
+        <div class="cfg-error" id="cfg-curve-error" role="status"></div>
+      </div>
+      <div class="cfg-field">
+        <label for="cfg-gain-neg">Rumspåverkan neg. avvikelse
+          <small>multiplikator när rumsmedel är <em>lägre</em> än börvärdet (K)</small>
+        </label>
+        <input type="number" id="cfg-gain-neg" step="0.1">
+      </div>
+      <div class="cfg-field">
+        <label for="cfg-gain-pos">Rumspåverkan pos. avvikelse
+          <small>multiplikator när rumsmedel är <em>högre</em> än börvärdet (K)</small>
+        </label>
+        <input type="number" id="cfg-gain-pos" step="0.1">
+      </div>
+      <div class="cfg-wide">
+        <div class="cfg-field inline">
+          <input type="checkbox" id="cfg-limits">
+          <label for="cfg-limits">Begränsa framledningen
+            <small>Inte avläst från DUC:en — en lokal antagelse, av som standard.</small>
+          </label>
+        </div>
+      </div>
+      <div class="cfg-field">
+        <label for="cfg-min">Min framledning (°C)</label>
+        <input type="number" id="cfg-min" step="1">
+      </div>
+      <div class="cfg-field">
+        <label for="cfg-max">Max framledning (°C)</label>
+        <input type="number" id="cfg-max" step="1">
+      </div>
+    </div>
+    <div class="cfg-actions">
+      <button type="button" id="cfg-reset">Återställ allt</button>
+    </div>
+    <p class="cfg-note">
+      Modellen: <code>framledning = kurva(ute) + |avvikelse| × multiplikator</code>, där
+      <code>avvikelse = rumsmedel − börvärde rumsmedel</code> och riktningen ligger i
+      multiplikatorns tecken.
+    </p>
+  </details>
+
+  <details id="tbl">
+    <summary>Tabell</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>Utomhus (°C)</th>
+          <th>Kurvans börvärde (°C)</th>
+          <th>Med rumskomp. (°C)</th>
+          <th>Lutning (°C/°C)</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+    <p class="cfg-note" id="tbl-note"></p>
+  </details>
+
+  <footer>
+    Framledningsbörvärde enligt DUC:ens värmekurva och rumskompensering.
+    <a href="../index.html">Fler labb</a>
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ * 1. DUC configuration
+ * ------------------------------------------------------------------ */
+
+// The heating curve as configured in the DUC, ascending in x.
+const CURVE = [
+  { x: -20, y: 66 }, { x: -15, y: 65 }, { x: -10, y: 61 }, { x: -5, y: 58 },
+  { x:   0, y: 54 }, { x:   5, y: 47 }, { x:  10, y: 37 }, { x:  15, y: 25 },
+  { x:  20, y: 20 },
+];
+
+const DEFAULTS = {
+  outdoor:      0,      // °C, the primary control
+  roomSetpoint: 21.5,   // °C, "Börvärde rumsmedel"
+  roomActual:   21.5,   // °C, "Rumsmedel" — starts at zero deviation
+  gainNeg:      10.0,   // K, "Rumspåverkan neg. avvikelse" (room below setpoint)
+  gainPos:     -10.0,   // K, "Rumspåverkan pos. avvikelse" (room above setpoint)
+  compEnabled:  true,
+  limitsOn:     false,  // supply limits are NOT read from the DUC — local assumption
+  minSupply:    20,
+  maxSupply:    70,
+};
+
+/* ------------------------------------------------------------------ *
+ * 2. Pure model
+ * ------------------------------------------------------------------ */
+
+const clamp  = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const round1 = (v) => Math.round(v * 10) / 10;
+
+// Piecewise linear interpolation, flat clamp outside the configured range.
+function curveAt(points, t) {
+  const n = points.length;
+  const first = points[0], last = points[n - 1];
+  if (t < first.x) return { value: first.y, slope: 0, segment: null, clamped: 'low' };
+  if (t > last.x)  return { value: last.y,  slope: 0, segment: null, clamped: 'high' };
+  // Half-open segments, so a temperature sitting exactly on a configured point
+  // reports the segment that starts there rather than the one behind it.
+  for (let i = 0; i < n - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    if (t >= a.x && t < b.x) {
+      const slope = (b.y - a.y) / (b.x - a.x);
+      return { value: a.y + slope * (t - a.x), slope, segment: i, a, b, clamped: null };
+    }
+  }
+  const a = points[n - 2];   // t === last.x
+  return { value: last.y, slope: (last.y - a.y) / (last.x - a.x), segment: n - 2, a, b: last, clamped: null };
+}
+
+const STAGES = [
+  {
+    id: 'curve',
+    label: 'Kurvans börvärde',
+    apply: (s, i) => {
+      const r = curveAt(i.curve, i.outdoor);
+      return Object.assign({}, s, { value: r.value, curve: i.curve, curveInfo: r, note: null });
+    },
+  },
+  {
+    id: 'roomComp',
+    label: 'BV-förskjutning rum',
+    apply: (s, i) => {
+      // The sensor and the DUC both work in tenths, so round before multiplying —
+      // otherwise float dust leaks into a value compared against the controller.
+      const deviation = round1(i.roomActual - i.roomSetpoint); // >0 = room too warm
+      if (!i.compEnabled) {
+        return Object.assign({}, s, { deviation, multiplier: null, offset: 0, note: 'off' });
+      }
+      const multiplier = deviation >= 0 ? i.gainPos : i.gainNeg;
+      // The direction lives in the multiplier's sign, so the magnitude is absolute.
+      const offset = Math.abs(deviation) * multiplier;
+      return Object.assign({}, s, {
+        deviation, multiplier, offset,
+        value: s.value + offset,
+        curve: s.curve.map((p) => ({ x: p.x, y: p.y + offset })),
+        note: null,
+      });
+    },
+  },
+  {
+    id: 'limits',
+    label: 'Begränsning',
+    apply: (s, i) => {
+      if (!i.limitsOn) return Object.assign({}, s, { note: null });
+      const lo = Math.min(i.minSupply, i.maxSupply);
+      const hi = Math.max(i.minSupply, i.maxSupply);
+      return Object.assign({}, s, {
+        value: clamp(s.value, lo, hi),
+        note: s.value > hi ? 'max' : s.value < lo ? 'min' : null,
+      });
+    },
+  },
+];
+
+function compute(inputs) {
+  let state = {
+    value: null, curve: null, curveInfo: null,
+    deviation: null, multiplier: null, offset: 0, note: null,
+  };
+  const steps = [];
+  for (const stage of STAGES) {
+    const before = state.value;
+    state = stage.apply(state, inputs);
+    steps.push({
+      id: stage.id, label: stage.label, before, after: state.value,
+      delta: before === null ? null : state.value - before,
+      note: state.note,
+    });
+  }
+  return {
+    supply: state.value,
+    effectiveCurve: state.curve,
+    curveInfo: state.curveInfo,
+    deviation: state.deviation,
+    multiplier: state.multiplier,
+    offset: state.offset,
+    limited: steps[steps.length - 1].note,
+    steps,
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. DUC curve serialization
+ * ------------------------------------------------------------------ */
+
+function parseDucCurve(str) {
+  const re = /x\s*=\s*(-?\d+(?:[.,]\d+)?)\s*;\s*y\s*=\s*(-?\d+(?:[.,]\d+)?)\s*;/g;
+  const points = [];
+  let m;
+  while ((m = re.exec(str)) !== null) {
+    points.push({
+      x: parseFloat(m[1].replace(',', '.')),
+      y: parseFloat(m[2].replace(',', '.')),
+    });
+  }
+  if (points.length < 2) throw new Error('Hittade färre än två x/y-par.');
+  if (points.some((p) => !isFinite(p.x) || !isFinite(p.y))) throw new Error('Ogiltigt tal i punktlistan.');
+  points.sort((a, b) => a.x - b.x);
+  for (let i = 1; i < points.length; i++) {
+    if (points[i].x === points[i - 1].x) throw new Error('Två punkter har samma utomhustemperatur (x=' + points[i].x + ').');
+  }
+  return points;
+}
+
+function formatDucCurve(points) {
+  return '{' + points.map((p) => '[x=' + p.x.toFixed(6) + ';y=' + p.y.toFixed(6) + ';]').join(',') + '}';
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. State
+ * ------------------------------------------------------------------ */
+
+const state = Object.assign({}, DEFAULTS, {
+  curve: CURVE.map((p) => ({ x: p.x, y: p.y })),
+  hover: null,  // outdoor temperature under the pointer, or null
+});
+
+function inputsFrom(over) {
+  return Object.assign({
+    curve: state.curve,
+    outdoor: state.outdoor,
+    roomSetpoint: state.roomSetpoint,
+    roomActual: state.roomActual,
+    gainNeg: state.gainNeg,
+    gainPos: state.gainPos,
+    compEnabled: state.compEnabled,
+    limitsOn: state.limitsOn,
+    minSupply: state.minSupply,
+    maxSupply: state.maxSupply,
+  }, over || {});
+}
+
+/* ------------------------------------------------------------------ *
+ * 5. Formatting
+ * ------------------------------------------------------------------ */
+
+const MINUS = '−';
+const num1  = (v) => (v < 0 ? MINUS : '') + Math.abs(v).toFixed(1);
+const sign1 = (v) => (v < -0.05 ? MINUS : '+') + Math.abs(v).toFixed(1);
+const num0  = (v) => (v < 0 ? MINUS : '') + Math.abs(Math.round(v)).toFixed(0);
+
+/* ------------------------------------------------------------------ *
+ * 6. Controls
+ * ------------------------------------------------------------------ */
+
+const CONTROLS = [
+  { key: 'outdoor',      name: 'Utomhustemperatur', gloss: 'kurvans ingång',      min: -25, max: 25, step: 0.5, room: false },
+  { key: 'roomSetpoint', name: 'Börvärde rumsmedel', gloss: 'önskad inomhustemp.', min:  15, max: 25, step: 0.5, room: true  },
+  { key: 'roomActual',   name: 'Rumsmedel',          gloss: 'uppmätt inomhustemp.', min: 15, max: 25, step: 0.1, room: true  },
+];
+
+const controlsEl = document.getElementById('controls');
+const controlRefs = {};
+
+for (const c of CONTROLS) {
+  const wrap = document.createElement('div');
+  wrap.className = 'control';
+
+  const head = document.createElement('div');
+  head.className = 'c-head';
+  const name = document.createElement('span');
+  name.className = 'c-name';
+  name.textContent = c.name;
+  const gloss = document.createElement('span');
+  gloss.className = 'c-gloss';
+  gloss.textContent = c.gloss;
+  head.append(name, gloss);
+
+  const inputs = document.createElement('div');
+  inputs.className = 'c-inputs';
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = c.min; range.max = c.max; range.step = c.step;
+  range.setAttribute('aria-label', c.name);
+  const box = document.createElement('input');
+  box.type = 'number';
+  box.min = c.min; box.max = c.max; box.step = c.step;
+  box.setAttribute('aria-label', c.name + ' (°C)');
+  inputs.append(range, box);
+
+  wrap.append(head, inputs);
+  controlsEl.append(wrap);
+  controlRefs[c.key] = { wrap, range, box, spec: c };
+
+  range.addEventListener('input', () => {
+    state[c.key] = parseFloat(range.value);
+    render();
+  });
+  // The number box is not clamped to the slider range on purpose: typing -30 or 30
+  // is how you check the curve's flat clamp outside the configured points.
+  box.addEventListener('input', () => {
+    const v = parseFloat(box.value);
+    if (!isNaN(v)) { state[c.key] = v; render({ keepBox: c.key }); }
+  });
+}
+
+const compToggle = document.getElementById('comp-toggle');
+compToggle.addEventListener('change', () => {
+  state.compEnabled = compToggle.checked;
+  render();
+});
+
+/* ------------------------------------------------------------------ *
+ * 7. Config box
+ * ------------------------------------------------------------------ */
+
+const cfgCurve = document.getElementById('cfg-curve');
+const cfgCurveError = document.getElementById('cfg-curve-error');
+const cfgGainNeg = document.getElementById('cfg-gain-neg');
+const cfgGainPos = document.getElementById('cfg-gain-pos');
+const cfgLimits = document.getElementById('cfg-limits');
+const cfgMin = document.getElementById('cfg-min');
+const cfgMax = document.getElementById('cfg-max');
+
+cfgCurve.addEventListener('input', () => {
+  try {
+    state.curve = parseDucCurve(cfgCurve.value);
+    cfgCurveError.textContent = '';
+    render({ keepCurveText: true });
+  } catch (err) {
+    // Keep the previous curve so the chart never blanks out mid-edit.
+    cfgCurveError.textContent = err.message;
+  }
+});
+
+function bindNumber(el, key) {
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    if (!isNaN(v)) { state[key] = v; render({ keepCfg: key }); }
+  });
+}
+bindNumber(cfgGainNeg, 'gainNeg');
+bindNumber(cfgGainPos, 'gainPos');
+bindNumber(cfgMin, 'minSupply');
+bindNumber(cfgMax, 'maxSupply');
+
+cfgLimits.addEventListener('change', () => {
+  state.limitsOn = cfgLimits.checked;
+  render();
+});
+
+document.getElementById('cfg-reset').addEventListener('click', () => {
+  Object.assign(state, DEFAULTS, { curve: CURVE.map((p) => ({ x: p.x, y: p.y })), hover: null });
+  cfgCurveError.textContent = '';
+  render();
+});
+
+/* ------------------------------------------------------------------ *
+ * 8. Chart
+ * ------------------------------------------------------------------ */
+
+const canvas = document.getElementById('plot');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+
+const X_MIN = -25, X_MAX = 25;
+const PAD = { l: 58, r: 20, t: 16, b: 50 };
+
+let cssW = 640, cssH = 400;
+let yMin = 10, yMax = 80;
+
+function setupCanvas() {
+  const avail = canvas.parentElement.clientWidth || 640;
+  cssW = Math.max(280, avail);
+  cssH = Math.round(clamp(cssW * 0.6, 280, 420));
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+const plotRect = () => ({
+  x: PAD.l, y: PAD.t,
+  w: cssW - PAD.l - PAD.r,
+  h: cssH - PAD.t - PAD.b,
+});
+
+const xToPx = (t) => { const r = plotRect(); return r.x + ((t - X_MIN) / (X_MAX - X_MIN)) * r.w; };
+const yToPx = (v) => { const r = plotRect(); return r.y + (1 - (v - yMin) / (yMax - yMin)) * r.h; };
+const pxToX = (px) => { const r = plotRect(); return X_MIN + ((px - r.x) / r.w) * (X_MAX - X_MIN); };
+
+function tokens() {
+  const cs = getComputedStyle(document.body);
+  const get = (n) => cs.getPropertyValue(n).trim();
+  return {
+    surface: get('--surface-1'),
+    grid: get('--grid'),
+    axis: get('--axis'),
+    muted: get('--text-muted'),
+    secondary: get('--text-secondary'),
+    primary: get('--text-primary'),
+    s1: get('--series-1'),
+    s2: get('--series-2'),
+    warning: get('--warning'),
+  };
+}
+
+// The y domain is fixed at 10–80 so ordinary slider moves never rescale the plot,
+// and only grows (in steps of 10) when a large offset would push a curve off-frame.
+function setYDomain(curves, values) {
+  let lo = 10, hi = 80;
+  const all = [];
+  for (const c of curves) { if (c) for (const p of c) all.push(p.y); }
+  for (const v of values) { if (v !== null && isFinite(v)) all.push(v); }
+  if (all.length) {
+    const min = Math.min.apply(null, all);
+    const max = Math.max.apply(null, all);
+    while (min < lo) lo -= 10;
+    while (max > hi) hi += 10;
+  }
+  yMin = lo; yMax = hi;
+}
+
+function drawCurve(points, style) {
+  if (!points || points.length < 2) return;
+  const first = points[0], last = points[points.length - 1];
+  ctx.lineWidth = style.width;
+  ctx.strokeStyle = style.color;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  // Flat clamp extensions, dashed: extrapolation, not configured points.
+  ctx.save();
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(xToPx(X_MIN), yToPx(first.y));
+  ctx.lineTo(xToPx(first.x), yToPx(first.y));
+  ctx.moveTo(xToPx(last.x), yToPx(last.y));
+  ctx.lineTo(xToPx(X_MAX), yToPx(last.y));
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const px = xToPx(p.x), py = yToPx(p.y);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  if (style.markers) {
+    for (const p of points) {
+      const px = xToPx(p.x), py = yToPx(p.y);
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fillStyle = style.color;
+      ctx.fill();
+      ctx.lineWidth = 2;                    // 2px surface ring, not a border
+      ctx.strokeStyle = style.surface;
+      ctx.stroke();
+    }
+  }
+}
+
+function dashedGuide(x1, y1, x2, y2, color) {
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function draw(active, withComp, withoutComp) {
+  const t = tokens();
+  const r = plotRect();
+  const shifted = Math.abs(active.offset) > 0.049;
+
+  setYDomain([withoutComp.effectiveCurve, active.effectiveCurve],
+             [withoutComp.supply, active.supply]);
+
+  ctx.clearRect(0, 0, cssW, cssH);
+  ctx.fillStyle = t.surface;
+  ctx.fillRect(0, 0, cssW, cssH);
+
+  // --- grid (solid hairlines, recessive) ---
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = t.grid;
+  ctx.beginPath();
+  for (let x = X_MIN; x <= X_MAX; x += 5) {
+    const px = Math.round(xToPx(x)) + 0.5;
+    ctx.moveTo(px, r.y); ctx.lineTo(px, r.y + r.h);
+  }
+  const yStep = (yMax - yMin) > 90 ? 20 : 10;
+  for (let v = yMin; v <= yMax + 0.001; v += yStep) {
+    const py = Math.round(yToPx(v)) + 0.5;
+    ctx.moveTo(r.x, py); ctx.lineTo(r.x + r.w, py);
+  }
+  ctx.stroke();
+
+  // --- axes ---
+  ctx.strokeStyle = t.axis;
+  ctx.beginPath();
+  ctx.moveTo(r.x, r.y + r.h + 0.5); ctx.lineTo(r.x + r.w, r.y + r.h + 0.5);
+  ctx.moveTo(r.x - 0.5, r.y); ctx.lineTo(r.x - 0.5, r.y + r.h);
+  ctx.stroke();
+
+  // --- tick labels ---
+  ctx.fillStyle = t.muted;
+  ctx.font = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let x = X_MIN; x <= X_MAX; x += 5) {
+    ctx.fillText(num0(x), xToPx(x), r.y + r.h + 8);
+  }
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let v = yMin; v <= yMax + 0.001; v += yStep) {
+    ctx.fillText(num0(v), r.x - 9, yToPx(v));
+  }
+
+  // --- axis titles ---
+  ctx.fillStyle = t.secondary;
+  ctx.font = '12px system-ui, -apple-system, "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Utomhustemperatur (°C)', r.x + r.w / 2, cssH - 12);
+  ctx.save();
+  ctx.translate(14, r.y + r.h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Framledning (°C)', 0, 0);
+  ctx.restore();
+
+  // Everything data-bearing is clipped to the plot rect.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.clip();
+
+  // --- supply limit lines ---
+  if (state.limitsOn) {
+    const lo = Math.min(state.minSupply, state.maxSupply);
+    const hi = Math.max(state.minSupply, state.maxSupply);
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = t.warning;
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    for (const v of [lo, hi]) {
+      const py = Math.round(yToPx(v)) + 0.5;
+      ctx.moveTo(r.x, py); ctx.lineTo(r.x + r.w, py);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = t.muted;
+    ctx.font = '10px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('max ' + num0(hi), r.x + 6, yToPx(hi) - 3);
+    ctx.textBaseline = 'top';
+    ctx.fillText('min ' + num0(lo), r.x + 6, yToPx(lo) + 3);
+    ctx.restore();
+  }
+
+  // --- hover crosshair (under the curves) ---
+  if (state.hover !== null) {
+    dashedGuide(xToPx(state.hover), r.y, xToPx(state.hover), r.y + r.h, t.axis);
+  }
+
+  // --- curves: configured behind, effective in front ---
+  if (shifted) {
+    drawCurve(withoutComp.effectiveCurve, { color: t.s2, width: 2, markers: false, surface: t.surface });
+  }
+  drawCurve(active.effectiveCurve, {
+    color: shifted ? t.s1 : t.s2, width: 2, markers: true, surface: t.surface,
+  });
+
+  // --- the offset at the current outdoor temperature ---
+  if (shifted) {
+    const px = xToPx(state.outdoor);
+    const yBase = yToPx(withoutComp.curveInfo.value);
+    const yEff = yToPx(withoutComp.curveInfo.value + active.offset);
+    ctx.save();
+    ctx.strokeStyle = t.s1;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(px, yBase);
+    ctx.lineTo(px, yEff);
+    ctx.stroke();
+    const dir = yEff < yBase ? -1 : 1;        // arrowhead points the way the offset moves
+    ctx.beginPath();
+    ctx.moveTo(px, yEff);
+    ctx.lineTo(px - 4, yEff - dir * 6);
+    ctx.lineTo(px + 4, yEff - dir * 6);
+    ctx.closePath();
+    ctx.fillStyle = t.s1;
+    ctx.fill();
+    ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.fillStyle = t.primary;
+    ctx.textBaseline = 'middle';
+    const label = sign1(active.offset) + ' K';
+    const w = ctx.measureText(label).width;
+    const flip = px + 10 + w > r.x + r.w;      // keep the label inside the plot
+    ctx.textAlign = flip ? 'right' : 'left';
+    const lx = flip ? px - 9 : px + 9;
+    const ly = (yBase + yEff) / 2;
+    ctx.fillStyle = t.surface;                 // let the label sit on the surface, not the grid
+    ctx.fillRect(flip ? lx - w - 3 : lx - 3, ly - 8, w + 6, 16);
+    ctx.fillStyle = t.primary;
+    ctx.fillText(label, lx, ly);
+    ctx.restore();
+  }
+
+  // --- current state overlay ---
+  const px = xToPx(state.outdoor);
+  const offScale = active.supply > yMax || active.supply < yMin;
+  const py = clamp(yToPx(active.supply), r.y, r.y + r.h);
+  dashedGuide(px, r.y, px, r.y + r.h, t.axis);
+  dashedGuide(r.x, py, r.x + r.w, py, t.axis);
+
+  // muted hollow dot: where the pure curve sits at the same outdoor temperature
+  if (shifted) {
+    ctx.beginPath();
+    ctx.arc(px, yToPx(withoutComp.supply), 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = t.surface;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = t.s2;
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  if (offScale) {
+    const dir = active.supply > yMax ? -1 : 1;
+    ctx.moveTo(px, py + dir * 2);
+    ctx.lineTo(px - 6, py + dir * 11);
+    ctx.lineTo(px + 6, py + dir * 11);
+    ctx.closePath();
+  } else {
+    ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = shifted ? t.s1 : t.s2;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = t.surface;
+  ctx.stroke();
+
+  ctx.restore(); // un-clip
+
+  // --- direct label on the live value ---
+  ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+  ctx.fillStyle = t.primary;
+  ctx.textBaseline = 'bottom';
+  const vLabel = num1(active.supply) + ' °C';
+  const vw = ctx.measureText(vLabel).width;
+  const right = px + 10 + vw > r.x + r.w;
+  ctx.textAlign = right ? 'right' : 'left';
+  ctx.fillStyle = t.surface;
+  const lx = right ? px - 9 : px + 9;
+  ctx.fillRect(right ? lx - vw - 3 : lx - 3, py - 24, vw + 6, 17);
+  ctx.fillStyle = t.primary;
+  ctx.fillText(vLabel, lx, py - 9);
+}
+
+/* ------------------------------------------------------------------ *
+ * 9. Pointer interaction
+ * ------------------------------------------------------------------ */
+
+let dragging = false;
+
+function outdoorFromEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  const raw = pxToX(e.clientX - rect.left);
+  return clamp(Math.round(raw * 2) / 2, X_MIN, X_MAX);   // snap to the 0.5 °C step
+}
+
+function showTooltip(at) {
+  const on  = compute(inputsFrom({ outdoor: at, compEnabled: true }));
+  const off = compute(inputsFrom({ outdoor: at, compEnabled: false }));
+  tooltip.textContent = '';
+
+  const head = document.createElement('div');
+  head.className = 'tt-head';
+  head.textContent = 'Ute ' + num1(at) + ' °C';
+  tooltip.append(head);
+
+  const rows = [
+    { cls: 's1', name: 'Med rumskomp.', value: on.supply },
+    { cls: 's2', name: 'Utan rumskomp.', value: off.supply },
+  ];
+  for (const row of rows) {
+    const el = document.createElement('div');
+    el.className = 'tt-row';
+    const key = document.createElement('span');
+    key.className = 'key ' + row.cls;
+    const name = document.createElement('span');
+    name.className = 'tt-name';
+    name.textContent = row.name;
+    const val = document.createElement('span');
+    val.className = 'tt-val';
+    val.textContent = num1(row.value) + ' °C';
+    el.append(key, name, val);
+    tooltip.append(el);
+  }
+
+  const r = plotRect();
+  const px = xToPx(at);
+  tooltip.classList.add('is-on');
+  const tw = tooltip.offsetWidth;
+  const left = px + 14 + tw > r.x + r.w ? px - 14 - tw : px + 14;
+  tooltip.style.left = Math.max(0, left) + 'px';
+  tooltip.style.top = (r.y + 8) + 'px';
+}
+
+function hideTooltip() {
+  tooltip.classList.remove('is-on');
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  canvas.setPointerCapture(e.pointerId);
+  state.outdoor = outdoorFromEvent(e);
+  state.hover = state.outdoor;
+  render();
+  showTooltip(state.hover);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  const at = outdoorFromEvent(e);
+  if (dragging) state.outdoor = at;
+  state.hover = at;
+  render();
+  showTooltip(at);
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  dragging = false;
+  if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointerleave', () => {
+  dragging = false;
+  state.hover = null;
+  hideTooltip();
+  render();
+});
+
+/* ------------------------------------------------------------------ *
+ * 10. Panel rendering
+ * ------------------------------------------------------------------ */
+
+const heroValue = document.getElementById('hero-value');
+const heroLabel = document.getElementById('hero-label');
+const heroNote = document.getElementById('hero-note');
+const cmpOn = document.getElementById('cmp-on');
+const cmpOff = document.getElementById('cmp-off');
+const cmpOnCell = document.getElementById('cmp-on-cell');
+const cmpOffCell = document.getElementById('cmp-off-cell');
+const cmpDiff = document.getElementById('cmp-diff');
+const breakdownEl = document.getElementById('breakdown');
+const legendEff = document.getElementById('legend-eff');
+const legendBase = document.getElementById('legend-base');
+
+function segmentText(info) {
+  if (!info) return '—';
+  if (info.clamped === 'low')  return 'under ' + num0(state.curve[0].x) + ' °C — platt';
+  if (info.clamped === 'high') return 'över ' + num0(state.curve[state.curve.length - 1].x) + ' °C — platt';
+  if (info.a && info.b) return num0(info.a.x) + ' → ' + num0(info.b.x) + ' °C';
+  return '—';
+}
+
+// metrics: [{ label, sub, value, unit, note, dim, flag }]
+function metricsFor(active, withoutComp) {
+  const info = active.curveInfo;
+  const out = [];
+
+  out.push({
+    label: 'Kurvans börvärde',
+    sub: 'segment ' + segmentText(info) + (info && info.clamped ? '' : ', lutning ' + num1(info ? info.slope : 0) + ' °C/°C'),
+    value: num1(withoutComp.supply),
+    unit: '°C',
+  });
+
+  out.push({
+    label: 'Avvikelse rum',
+    sub: 'rumsmedel − börvärde',
+    value: sign1(active.deviation === null ? 0 : active.deviation),
+    unit: 'K',
+    dim: !state.compEnabled,
+  });
+
+  out.push({
+    label: 'Aktiv multiplikator',
+    sub: !state.compEnabled ? 'rumskompensering av'
+       : Math.abs(active.deviation) < 0.05 ? 'ingen avvikelse'
+       : active.deviation > 0 ? 'pos. avvikelse (rummet varmare)'
+       : 'neg. avvikelse (rummet kallare)',
+    value: state.compEnabled ? sign1(active.multiplier) : '—',
+    unit: state.compEnabled ? 'K' : '',
+    dim: !state.compEnabled || Math.abs(active.deviation) < 0.05,
+  });
+
+  out.push({
+    label: 'BV-förskjutning rum',
+    sub: state.compEnabled ? '|avvikelse| × multiplikator' : 'ingen förskjutning',
+    value: sign1(active.offset),
+    unit: 'K',
+    dim: !state.compEnabled,
+  });
+
+  if (active.limited) {
+    out.push({
+      label: 'Begränsning',
+      sub: active.limited === 'max' ? 'kapad mot max framledning' : 'kapad mot min framledning',
+      value: num1(active.limited === 'max' ? Math.max(state.minSupply, state.maxSupply)
+                                           : Math.min(state.minSupply, state.maxSupply)),
+      unit: '°C',
+      flag: true,
+    });
+  }
+
+  return out;
+}
+
+function renderBreakdown(metrics) {
+  breakdownEl.textContent = '';
+  for (const m of metrics) {
+    const row = document.createElement('div');
+    row.className = 'row' + (m.dim ? ' is-dim' : '');
+
+    const label = document.createElement('span');
+    label.className = 'r-label';
+    label.textContent = m.label;
+    if (m.sub) {
+      const sub = document.createElement('small');
+      sub.textContent = m.sub;
+      label.append(sub);
+    }
+
+    const value = document.createElement('span');
+    value.className = 'r-value' + (m.flag ? ' is-flag' : '');
+    value.textContent = m.value + (m.unit ? ' ' + m.unit : '');
+
+    row.append(label, value);
+    breakdownEl.append(row);
+  }
+}
+
+function renderTable(withoutComp, active) {
+  const body = document.getElementById('tbl-body');
+  body.textContent = '';
+  const offset = active.offset;
+  const rows = state.curve.map((p, i) => {
+    const next = state.curve[i + 1];
+    const slope = next ? (next.y - p.y) / (next.x - p.x) : null;
+    return { x: p.x, base: p.y, eff: p.y + offset, slope };
+  });
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    const cells = [
+      num0(r.x),
+      num1(r.base),
+      num1(r.eff),
+      r.slope === null ? '—' : num1(r.slope),
+    ];
+    cells.forEach((text) => {
+      const td = document.createElement('td');
+      td.textContent = text;
+      tr.append(td);
+    });
+    if (Math.abs(r.x - state.outdoor) < 0.001) tr.classList.add('is-here');
+    body.append(tr);
+  }
+  document.getElementById('tbl-note').textContent =
+    'Vid ' + num1(state.outdoor) + ' °C ute: kurvan ' + num1(withoutComp.supply) +
+    ' °C, med rumskompensering ' + num1(compute(inputsFrom({ compEnabled: true })).supply) +
+    ' °C. "Med rumskomp." i tabellen är kurvan parallellförskjuten ' + sign1(offset) + ' K.';
+}
+
+function syncInputs(opts) {
+  for (const key in controlRefs) {
+    const ref = controlRefs[key];
+    ref.range.value = clamp(state[key], ref.spec.min, ref.spec.max);
+    if (opts.keepBox !== key) {
+      const dec = ref.spec.step < 0.5 ? 1 : (state[key] % 1 === 0 ? 0 : 1);
+      ref.box.value = state[key].toFixed(dec);
+    }
+    if (ref.spec.room) ref.wrap.classList.toggle('is-off', !state.compEnabled);
+  }
+  compToggle.checked = state.compEnabled;
+  if (!opts.keepCurveText) cfgCurve.value = formatDucCurve(state.curve);
+  if (opts.keepCfg !== 'gainNeg') cfgGainNeg.value = state.gainNeg.toFixed(1);
+  if (opts.keepCfg !== 'gainPos') cfgGainPos.value = state.gainPos.toFixed(1);
+  if (opts.keepCfg !== 'minSupply') cfgMin.value = String(state.minSupply);
+  if (opts.keepCfg !== 'maxSupply') cfgMax.value = String(state.maxSupply);
+  cfgLimits.checked = state.limitsOn;
+}
+
+function render(opts) {
+  opts = opts || {};
+  const withComp = compute(inputsFrom({ compEnabled: true }));
+  const withoutComp = compute(inputsFrom({ compEnabled: false }));
+  const active = state.compEnabled ? withComp : withoutComp;
+
+  syncInputs(opts);
+
+  heroValue.textContent = num1(active.supply);
+  heroLabel.textContent = state.compEnabled ? 'Rumskomp. börvärde' : 'Framledning (kurvan)';
+
+  const notes = [];
+  if (active.curveInfo && active.curveInfo.clamped) {
+    notes.push('Utomhustemperaturen ligger utanför kurvan — platt ' + num1(active.curveInfo.value) + ' °C.');
+  }
+  if (active.limited) {
+    notes.push(active.limited === 'max' ? 'Kapad mot max framledning.' : 'Kapad mot min framledning.');
+  }
+  heroNote.textContent = notes.join(' ');
+  heroNote.classList.toggle('is-flag', !!active.limited);
+
+  cmpOn.textContent = num1(withComp.supply) + ' °C';
+  cmpOff.textContent = num1(withoutComp.supply) + ' °C';
+  cmpOnCell.classList.toggle('is-active', state.compEnabled);
+  cmpOffCell.classList.toggle('is-active', !state.compEnabled);
+  const diff = withComp.supply - withoutComp.supply;
+  cmpDiff.textContent = Math.abs(diff) < 0.05
+    ? 'Rumskompenseringen ändrar ingenting just nu (ingen avvikelse).'
+    : 'Rumskompenseringen flyttar börvärdet ' + sign1(diff) + ' K.';
+
+  renderBreakdown(metricsFor(active, withoutComp));
+  renderTable(withoutComp, active);
+
+  const shifted = Math.abs(active.offset) > 0.049;
+  legendEff.classList.toggle('is-dim', !shifted);
+  legendBase.classList.toggle('is-dim', false);
+
+  draw(active, withComp, withoutComp);
+}
+
+/* ------------------------------------------------------------------ *
+ * 11. Boot
+ * ------------------------------------------------------------------ */
+
+function resize() { setupCanvas(); render(); }
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 150));
+if (window.matchMedia) {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  if (mq.addEventListener) mq.addEventListener('change', () => render());
+}
+
+setupCanvas();
+render();
+</script>
+</body>
+</html>
