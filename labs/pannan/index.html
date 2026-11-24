@@ -250,6 +250,7 @@
   table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.82rem; }
   th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
   th:first-child, td:first-child { text-align: left; }
+  #changelog th, #changelog td { text-align: left; }
   thead th { color: var(--text-muted); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
   tbody tr.is-here td { background: color-mix(in srgb, var(--series-1) 9%, transparent); }
 
@@ -389,6 +390,26 @@
       <tbody id="tbl-body"></tbody>
     </table>
     <p class="cfg-note" id="tbl-note"></p>
+  </details>
+
+  <details id="changelog" open>
+    <summary>Ändringslogg</summary>
+    <table>
+      <thead>
+        <tr><th>Ute (°C)</th><th>v1 <small>original</small></th><th>v2 <small>2026-11-20</small></th><th>v3 <small>2026-11-24</small></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>−20</td><td>66</td><td>66</td><td>66</td></tr>
+        <tr><td>−15</td><td>65</td><td>65</td><td>65</td></tr>
+        <tr><td>−10</td><td>61</td><td>61</td><td>61</td></tr>
+        <tr><td>−5</td><td>58</td><td>55 <b>(−3)</b></td><td>56 <b>(+1)</b></td></tr>
+        <tr><td>0</td><td>54</td><td>51 <b>(−3)</b></td><td>52 <b>(+1)</b></td></tr>
+        <tr><td>5</td><td>47</td><td>45 <b>(−2)</b></td><td>46 <b>(+1)</b></td></tr>
+        <tr><td>10</td><td>37</td><td>39 <b>(+2)</b></td><td>39</td></tr>
+        <tr><td>15</td><td>25</td><td>28 <b>(+3)</b></td><td>28</td></tr>
+        <tr><td>20</td><td>20</td><td>20</td><td>20</td></tr>
+      </tbody>
+    </table>
   </details>
 
   <footer>
