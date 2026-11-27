@@ -22,6 +22,7 @@
     --series-2:       #eb6834;   /* utan rumskomp. (configured) */
     --series-v1:      #a98bd6;   /* v1 reference curve */
     --series-v2:      #7ab87a;   /* v2 reference curve */
+    --series-v3:      #c9a24a;   /* v3 reference curve */
     --warning:        #fab219;
     --critical:       #d03b3b;
     --field:          #ffffff;
@@ -42,6 +43,7 @@
       --series-2:       #d95926;
       --series-v1:      #8a6fbf;
       --series-v2:      #5a9a5a;
+    --series-v3:      #a8862f;
       --field:          #232322;
       --field-ring:     #3a3a37;
     }
@@ -60,6 +62,7 @@
     --series-2:       #d95926;
     --series-v1:      #8a6fbf;
     --series-v2:      #5a9a5a;
+    --series-v3:      #a8862f;
     --field:          #232322;
     --field-ring:     #3a3a37;
   }
@@ -105,6 +108,7 @@
   .key.s2 { background: var(--series-2); }
   .key.v1 { height: 0; border-top: 2px dotted var(--series-v1); border-radius: 0; }
   .key.v2 { height: 0; border-top: 2px dotted var(--series-v2); border-radius: 0; }
+  .key.v3 { height: 0; border-top: 2px dotted var(--series-v3); border-radius: 0; }
 
   /* ---- chart ---- */
   .chart-wrap { position: relative; }
@@ -283,6 +287,7 @@
       <div class="legend">
         <span class="legend-item" id="legend-eff"><span class="key s1"></span>Med rumskompensering</span>
         <span class="legend-item" id="legend-base"><span class="key s2"></span>Kurvans börvärde (utan rumskomp.)</span>
+        <span class="legend-item"><span class="key v3"></span>v3 (2026-11-24 → 2026-11-27)</span>
         <span class="legend-item"><span class="key v2"></span>v2 (2026-11-20 → 2026-11-24)</span>
         <span class="legend-item"><span class="key v1"></span>v1 (innan 2026-11-20)</span>
       </div>
@@ -396,18 +401,18 @@
     <summary>Ändringslogg</summary>
     <table>
       <thead>
-        <tr><th>Ute (°C)</th><th>v1 <small>original</small></th><th>v2 <small>2026-11-20</small></th><th>v3 <small>2026-11-24</small></th></tr>
+        <tr><th>Ute (°C)</th><th>v1 <small>original</small></th><th>v2 <small>2026-11-20</small></th><th>v3 <small>2026-11-24</small></th><th>v4 <small>2026-11-27</small></th></tr>
       </thead>
       <tbody>
-        <tr><td>−20</td><td>66</td><td>66</td><td>66</td></tr>
-        <tr><td>−15</td><td>65</td><td>65</td><td>65</td></tr>
-        <tr><td>−10</td><td>61</td><td>61</td><td>61</td></tr>
-        <tr><td>−5</td><td>58</td><td>55 <b>(−3)</b></td><td>56 <b>(+1)</b></td></tr>
-        <tr><td>0</td><td>54</td><td>51 <b>(−3)</b></td><td>52 <b>(+1)</b></td></tr>
-        <tr><td>5</td><td>47</td><td>45 <b>(−2)</b></td><td>46 <b>(+1)</b></td></tr>
-        <tr><td>10</td><td>37</td><td>39 <b>(+2)</b></td><td>39</td></tr>
-        <tr><td>15</td><td>25</td><td>28 <b>(+3)</b></td><td>28</td></tr>
-        <tr><td>20</td><td>20</td><td>20</td><td>20</td></tr>
+        <tr><td>−20</td><td>66</td><td>66</td><td>66</td><td>66</td></tr>
+        <tr><td>−15</td><td>65</td><td>65</td><td>65</td><td>65</td></tr>
+        <tr><td>−10</td><td>61</td><td>61</td><td>61</td><td>61</td></tr>
+        <tr><td>−5</td><td>58</td><td>55 <b>(−3)</b></td><td>56 <b>(+1)</b></td><td>58 <b>(+2)</b></td></tr>
+        <tr><td>0</td><td>54</td><td>51 <b>(−3)</b></td><td>52 <b>(+1)</b></td><td>54 <b>(+2)</b></td></tr>
+        <tr><td>5</td><td>47</td><td>45 <b>(−2)</b></td><td>46 <b>(+1)</b></td><td>46</td></tr>
+        <tr><td>10</td><td>37</td><td>39 <b>(+2)</b></td><td>39</td><td>39</td></tr>
+        <tr><td>15</td><td>25</td><td>28 <b>(+3)</b></td><td>28</td><td>28</td></tr>
+        <tr><td>20</td><td>20</td><td>20</td><td>20</td><td>20</td></tr>
       </tbody>
     </table>
   </details>
@@ -438,10 +443,16 @@ const CURVE_V2 = [
   { x:  20, y: 20 },
 ];
 
-// The heating curve as configured in the DUC, ascending in x.
-const CURVE = [
+const CURVE_V3 = [
   { x: -20, y: 66 }, { x: -15, y: 65 }, { x: -10, y: 61 }, { x: -5, y: 56 },
   { x:   0, y: 52 }, { x:   5, y: 46 }, { x:  10, y: 39 }, { x:  15, y: 28 },
+  { x:  20, y: 20 },
+];
+
+// The heating curve as configured in the DUC, ascending in x.
+const CURVE = [
+  { x: -20, y: 66 }, { x: -15, y: 65 }, { x: -10, y: 61 }, { x: -5, y: 58 },
+  { x:   0, y: 54 }, { x:   5, y: 46 }, { x:  10, y: 39 }, { x:  15, y: 28 },
   { x:  20, y: 20 },
 ];
 
@@ -771,6 +782,7 @@ function tokens() {
     s2: get('--series-2'),
     v1: get('--series-v1'),
     v2: get('--series-v2'),
+    v3: get('--series-v3'),
     warning: get('--warning'),
   };
 }
@@ -851,7 +863,7 @@ function draw(active, withComp, withoutComp) {
   const r = plotRect();
   const shifted = Math.abs(active.offset) > 0.049;
 
-  setYDomain([CURVE_V1, CURVE_V2, withoutComp.effectiveCurve, active.effectiveCurve],
+  setYDomain([CURVE_V1, CURVE_V2, CURVE_V3, withoutComp.effectiveCurve, active.effectiveCurve],
              [withoutComp.supply, active.supply]);
 
   ctx.clearRect(0, 0, cssW, cssH);
@@ -942,9 +954,10 @@ function draw(active, withComp, withoutComp) {
     dashedGuide(xToPx(state.hover), r.y, xToPx(state.hover), r.y + r.h, t.axis);
   }
 
-  // --- curves: v1/v2 references, configured behind, effective in front ---
+  // --- curves: v1/v2/v3 references, configured behind, effective in front ---
   drawCurve(CURVE_V1, { color: t.v1, width: 1.5, markers: false, dash: [1, 4], surface: t.surface });
   drawCurve(CURVE_V2, { color: t.v2, width: 1.5, markers: false, dash: [1, 4], surface: t.surface });
+  drawCurve(CURVE_V3, { color: t.v3, width: 1.5, markers: false, dash: [1, 4], surface: t.surface });
   if (shifted) {
     drawCurve(withoutComp.effectiveCurve, { color: t.s2, width: 2, markers: false, surface: t.surface });
   }
